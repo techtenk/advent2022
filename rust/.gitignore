@@ -1,0 +1,5 @@
+#IDE stuff
+.vscode/**/*
+
+#Build artifacts
+target/**/*
