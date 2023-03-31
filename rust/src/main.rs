@@ -2,6 +2,7 @@ use std::env;
 mod run_day;
 mod day5;
 mod day6;
+mod day7;
 
 fn help() {
     println!("usage:

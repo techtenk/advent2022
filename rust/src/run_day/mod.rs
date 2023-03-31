@@ -3,6 +3,7 @@
 pub const DAY_ALL_PARTS: u8 = 3;
 use crate::day5;
 use crate::day6;
+use crate::day7;
 
 pub fn run(day: i32, parts: u8) {
     let run_part1 = parts & 1 > 0;
@@ -25,6 +26,14 @@ pub fn run(day: i32, parts: u8) {
                 day6::run_part2();
             }
         },
+        7 => {
+            if run_part1 {
+                day7::run_part1();
+            }
+            if run_part2 {
+                day7::run_part2();
+            }
+        }
         _ => {
             println!("Day {} not implemented", day);
         }
