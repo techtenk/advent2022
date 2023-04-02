@@ -15,62 +15,6 @@ fn run() -> [[u8; 99]; 99] {
         }
     }
 
-    // now find which trees are visible
-    let mut num_visible = 0;
-    for i in 0..trees[0].len() {
-        for j in 0..trees[0].len() {
-            // easiest rule first, if it's on the outside count it visible
-            if i == 0 || j == 0 || i == trees[0].len() - 1 || j == trees[0].len() - 1 {
-                num_visible += 1;
-                vis_map[i][j] = trees[i][j];
-                continue;
-            }
-
-            // otherwise we check all the neighbors very inefficiently
-            // check top
-            let mut vis_left = true;
-            for k in 0..i {
-                if trees[k][j] >= trees[i][j] {
-                    vis_left = false;
-                    break;
-                }
-            }
-
-            // check bottom
-            let mut vis_right = true;
-            for k in i+1..trees[0].len() {
-                if trees[k][j] >= trees[i][j] {
-                    vis_right = false;
-                    break;
-                }
-            }
-
-            // check left
-            let mut vis_north = true;
-            for l in 0..j {
-                if trees[i][l] >= trees[i][j] {
-                    vis_north = false;
-                    break;
-                }
-            }
-
-            // check right
-            let mut vis_south = true;
-            for l in j+1..trees[0].len() {
-                if trees[i][l] >= trees[i][j] {
-                    vis_south = false;
-                    break;
-                }
-            }
-
-            if vis_left || vis_right || vis_north || vis_south {
-                num_visible += 1;
-                vis_map[i][j] = trees[i][j];
-            }
-            
-        }
-    }
-
     trees
 
 }
