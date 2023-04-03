@@ -6,7 +6,6 @@ fn run() -> [[u8; 99]; 99] {
     let mut vec_buf: Vec<u8> = Vec::new();
     let lines = helpers::get_input_lines(&full_input_path, &mut vec_buf);
     let mut trees: [[u8; 99]; 99] = [[0; 99]; 99];
-    let mut vis_map: [[u8; 99]; 99] = [[0; 99]; 99];
     for (i, line) in lines.enumerate() {
         if let Ok(line) = line {
             for (j, c) in line.chars().enumerate() {
