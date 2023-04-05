@@ -1,4 +1,5 @@
 use std::env;
+
 mod run_day;
 mod day5;
 mod day6;
@@ -22,6 +23,8 @@ Examples:
     aoc run all
       ");
 }
+
+#[cfg(feature = "image")]
 fn main() {
     // check command line args, print usage if incorrect or has --help 
     let args: Vec<String> = env::args().collect();
