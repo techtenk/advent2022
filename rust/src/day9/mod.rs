@@ -1,9 +1,11 @@
 
 use crate::{get_file_path, helpers};
-use std::{path::Path, sync::mpsc::{Sender, self, Receiver}, thread, collections::HashSet, ops::{Div}, time::{Duration, SystemTime}};
+use std::{path::Path, sync::mpsc::{self}, thread, collections::HashSet, ops::{Div}, time::{Duration, SystemTime}};
 use image::*;
 use blit::*;
 use minifb::{WindowOptions, Scale, Window, Key};
+use rusttype::{Font, Scale as RustTypeScale};
+use imageproc::drawing::text_size;
 
 #[derive(Clone,Copy)]
 enum DIRECTION {
@@ -42,7 +44,7 @@ fn get_steps() -> Vec<DIRECTION> {
     steps
 }
 
-fn move_knot(head: (i32, i32), tail: (i32, i32), tx: &Sender<TailTracker>) -> (i32, i32) {
+fn move_knot(head: (i32, i32), tail: (i32, i32)) -> (i32, i32) {
 
     // println!("head moved to {}, {}", head.0, head.1);
     if tail.0.abs_diff(head.0) <= 1 && tail.1.abs_diff(head.1) <= 1 {
@@ -66,23 +68,16 @@ fn move_knot(head: (i32, i32), tail: (i32, i32), tx: &Sender<TailTracker>) -> (i
         new_tail.1 += 1;
     }
 
-    // println!("moving tail to {}, {}", new_tail.0, new_tail.1);
-    let sent = tx.send(TailTracker {
-        new_pos: new_tail,
-        end_of_stream: false
-    });
-    if sent.is_err() {
-        panic!("Failed to send message");
-    }
-
     new_tail
 }
 
+#[derive(Clone, Copy)]
 enum GameSpeed {
     STEP, // not implemented -- only move head when triggered by user, or in ByKnot mode, only move a single knot
+    CRAWL,
     SLOW, // 4 head moves per second (hmps)
-    FAST, // 12 hmps
-    BLAZE // 48 hmps
+    FAST, // 20 hmps
+    BLAZE // 50 hmps
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -103,20 +98,23 @@ struct TailTracker {
 
 struct RopeGame {
     window: Window,
-    animation_mode: RopeAnimationMode
+    animation_mode: RopeAnimationMode,
+    game_speed: GameSpeed
 }
 
 #[derive(Clone)]
 struct GameState {
-    knots: Vec<Knot>
+    knots: Vec<Knot>,
+    tail_visited: HashSet<(i32, i32)>,
+    game_over: bool
 }
 
 impl RopeGame {
 
-    pub fn init_game() -> RopeGame {
+    pub fn init_game(game_speed: GameSpeed, animation_mode: RopeAnimationMode) -> RopeGame {
         let window = RopeGame::setup_window(1280, 800);
 
-        RopeGame { window, animation_mode: RopeAnimationMode::WholeRope }
+        RopeGame { window, animation_mode, game_speed }
     }
 
     fn setup_window(width: usize, height: usize) -> Window {
@@ -125,7 +123,7 @@ impl RopeGame {
             scale: Scale::X1,
             ..WindowOptions::default()
         };
-        let mut window = Window::new(
+        let window = Window::new(
             "AOC Rope Bridge Animation - ESC to exit",
             width,
             height,
@@ -136,9 +134,9 @@ impl RopeGame {
         window
     }
 
-    fn get_knot_coords(knot_size: u8, window_size: (u32, u32), knot_position: (i32, i32)) -> (u32, u32) {
+    fn get_knot_coords(knot_size: u8, window_size: (usize, usize), knot_position: (i32, i32)) -> (i32, i32) {
         // convert the X,Y of the knot to window coordinates based on knot size, window size and wrapping logic
-        let mut x = knot_size as i32 * knot_position.0 + (window_size.0 / 2) as i32;
+        let mut x = knot_size as i32 * knot_position.0 + (window_size.0 / 2 - (knot_size / 2) as usize) as i32;
 
         // now implement wrapping
         while x < 0 {
@@ -149,7 +147,7 @@ impl RopeGame {
             x -= window_size.0 as i32;
         }
 
-        let mut y = -1 * knot_size as i32 * knot_position.1 + (window_size.1 / 2) as i32;
+        let mut y = -1 * knot_size as i32 * knot_position.1 + (window_size.1 / 2 - (knot_size / 2) as usize) as i32;
 
         // wrapping again
         while y < 0 {
@@ -159,7 +157,7 @@ impl RopeGame {
         while y > window_size.1 as i32 {
             y -= window_size.1 as i32;
         }
-        (x as u32 ,y as u32)
+        (x ,y)
     }
 
     pub fn run_game(&mut self) -> Result<String, ImageError>{
@@ -167,35 +165,28 @@ impl RopeGame {
         // and the messaging, make a thread to track the state of the game, the main thread will animate
         // the animation channel will receive a message when a knot moves (ByKnot Animation Mode) or before each head move (WholeRope)
         let (state_tx, state_rx) = mpsc::channel::<GameState>();
-
-        // and we still need our tail tracking thread
-        let (tail_tx, tail_rx) = mpsc::channel::<TailTracker>();
-        let main_thread_tail_tx = tail_tx.clone();
-        let tracker_handle = thread::spawn(move || {
-            let mut visited: HashSet<(i32, i32)> = HashSet::new();
-            visited.insert((0,0));
-            let mut track = tail_rx.recv().unwrap();
-            while track.end_of_stream == false {
-                // println!("tail moved to {}, {}", track.new_pos.0, track.new_pos.1);
-                visited.insert(track.new_pos);
-                track = tail_rx.recv().unwrap();
-            }
-            return visited.len();
-        });
+        let (state_interrupt_tx, state_interrupt_rx) = mpsc::channel::<String>();
 
         let animation_mode = self.animation_mode;
-        let speed = GameSpeed::BLAZE;
+        let speed = self.game_speed;
 
         // start the state handling thread
         let state_handle = thread::spawn(move || {
 
             // set up knots
             let knots = vec![Knot { position: (0,0)}; 10];
-            let state = & mut GameState { knots };
+            let mut tail_visited: HashSet<(i32, i32)> = HashSet::new();
+            tail_visited.insert((0,0));
+            let state = & mut GameState { knots , tail_visited, game_over: false };
 
 
             let steps = get_steps();
             for step in steps {
+                // check for interrupts
+                if state_interrupt_rx.try_recv().is_ok() {
+                    break;
+                }
+
                 // this is our main loop for driving the head, which drives the rest of the knots
                 let start_time = SystemTime::now();
 
@@ -219,7 +210,15 @@ impl RopeGame {
                     }
 
                     
-                    state.knots[i].position = move_knot(state.knots[i-1].position, state.knots[i].position, &tail_tx);
+                    state.knots[i].position = move_knot(state.knots[i-1].position, state.knots[i].position);
+
+                    if i == state.knots.len() - 1 {
+
+                        // println!("tail moved to {}, {}", track.new_pos.0, track.new_pos.1);
+                        let tail_pos = state.knots[i].position;
+                        state.tail_visited.insert(tail_pos);
+                    }
+
                 }
 
                 let result = state_tx.send(state.clone());
@@ -228,9 +227,10 @@ impl RopeGame {
                 }
 
                 let mut max_loop_time = match speed {
+                    GameSpeed::CRAWL => 200,
                     GameSpeed::SLOW => 25,
                     GameSpeed::FAST => 5,
-                    GameSpeed::BLAZE => 1,
+                    GameSpeed::BLAZE => 0,
                     _ => 25
                 };
                 if animation_mode == RopeAnimationMode::WholeRope {
@@ -241,8 +241,11 @@ impl RopeGame {
                 thread::sleep(Duration::from_millis(max_loop_time).checked_sub(sleep_time).unwrap_or(Duration::ZERO));
             }
 
-            // close the tracker thread
-            let sent = tail_tx.send(TailTracker { new_pos: (0,0), end_of_stream: true });
+            // state thread is closing, set game_over
+            state.game_over = true;
+            let sent = state_tx.send(state.clone());
+
+            println!("Tail visited: {}", state.tail_visited.len());
 
             if sent.is_err() {
                 panic!("Failed to send!");
@@ -297,35 +300,57 @@ impl RopeGame {
                     },
                     _ => (0,0)
                 };
-                white_square_buffer.blit(&mut buffer, width, (up_left.0 * 12 + x_pos, -1 * (up_left.1 * 12) + y_pos));
                 
-                for knot in new_state.knots.as_slice() {
-                    rgb.blit(&mut buffer, width, (knot.position.0 * 12 + x_pos, -1 * (knot.position.1 * 12) + y_pos));
+                let clear_coords = RopeGame::get_knot_coords(12, (width, height),up_left);
+                white_square_buffer.blit(&mut buffer, width, clear_coords);
+                // couple of special cases when there's a wrap, so we clear both sides
+                if clear_coords.0 > (width as i32 - 12*10) {
+                    white_square_buffer.blit(&mut buffer, width, (0, clear_coords.1));
                 }
+
+                if clear_coords.1 > (height as i32 - 12*10) as i32 {
+                    white_square_buffer.blit(&mut buffer, width, (clear_coords.0, 0));
+                }
+
+                for knot in new_state.knots.as_slice() {
+                    rgb.blit(&mut buffer, width, RopeGame::get_knot_coords(12, (width, height), knot.position));
+                }
+
+                // draw the visited count in upper left corner
+                let mut vis_count = RgbImage::new(300, 60);
+
+                let font = Vec::from(include_bytes!("resources/whiterabbit/whitrabt.ttf") as &[u8]);
+                let font = Font::try_from_vec(font).unwrap();
+
+                let height = 48.0;
+                let scale = RustTypeScale {
+                    x: height * 2.0,
+                    y: height,
+                };
+
+                let text = &new_state.tail_visited.len().to_string()[..];
+                imageproc::drawing::draw_text_mut(&mut vis_count, Rgb([12u8, 40u8, 15u8]), 0, 0, scale, &font, text);
+                let (w, h) = text_size(scale, &font, text);
+                // println!("Text size: {}x{}", w, h);
+
+                // manually clear the text space
+                for line in 10..(h + 10) as usize {
+                    let _ = &buffer[line * 1280 + (width - 350)..line * 1280 + width].fill(0x00_FF_FF_FF);
+                }
+                vis_count.blit(&mut buffer, width, (width as i32 - w - 50, 10), 0x00_00_00_00);
+
                 old_state = Some(new_state.clone());
-                thread::sleep(Duration::from_millis(20));
             }
 
 
         }
 
-        
+        let _ = state_interrupt_tx.send("Closing window".to_string());
+        thread::sleep(Duration::from_millis(20));
 
-        if !tracker_handle.is_finished() {
-            // kill the other threads to exit immediately
-            main_thread_tail_tx.send(TailTracker { new_pos: (0, 0), end_of_stream: true }).expect("Could not kill tail thread");
-            thread::sleep(Duration::from_millis(20));
-        }
-        let visited = tracker_handle.join().expect("TailTracker thread did not exit gracefully.");
-        println!("Visited a total of {} spaces", visited);
-        drop(state_rx);
-        if !state_handle.is_finished() {
-            // give a little more time for the state handler thread to exit after we drop the channel
-            thread::sleep(Duration::from_millis(500));
-        }
         match state_handle.join().is_ok() {
             true => {
-                println!("State Thread finished.");
+                println!("State Thread exited gracefully.");
             },
             false => {
                 println!("State Thread was killed.");
@@ -366,7 +391,16 @@ pub fn run_part1() {
             DIRECTION::UP => head_pos.1 += 1,
             DIRECTION::DOWN => head_pos.1 -= 1,
         }
-        tail_pos = move_knot(head_pos, tail_pos, &tx);
+        tail_pos = move_knot(head_pos, tail_pos);
+
+        // println!("moving tail to {}, {}", new_tail.0, new_tail.1);
+        let sent = tx.send(TailTracker {
+            new_pos: tail_pos,
+            end_of_stream: false
+        });
+        if sent.is_err() {
+            panic!("Failed to send message");
+        }
     }
 
     
@@ -383,7 +417,7 @@ pub fn run_part1() {
 pub fn run_part2() {
     // now let's have some real fun!
 
-    let mut game = RopeGame::init_game();
+    let mut game = RopeGame::init_game(GameSpeed::BLAZE, RopeAnimationMode::WholeRope);
     let exit_msg = game.run_game();
     match exit_msg {
         Ok(exit_msg) => println!("{}", exit_msg),
