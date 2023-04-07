@@ -51,7 +51,7 @@ pub fn run(day: i32, parts: u8) {
             }
             if run_part2 {
                 day9::run_part2();
-            },
+            }
         }
         10 => {
             if run_part1 {
