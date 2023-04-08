@@ -1,5 +1,4 @@
 use crate::{helpers, get_file_path};
-use std::path::Path;
 
 fn run() -> [[u8; 99]; 99] {
     let full_input_path = get_file_path!("input.txt");

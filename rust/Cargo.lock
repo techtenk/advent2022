@@ -22,6 +22,7 @@ dependencies = [
  "image",
  "imageproc",
  "minifb",
+ "num",
  "rusttype",
 ]
 

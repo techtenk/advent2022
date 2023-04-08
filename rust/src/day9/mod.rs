@@ -1,6 +1,6 @@
 
 use crate::{get_file_path, helpers};
-use std::{path::Path, sync::mpsc::{self}, thread, collections::HashSet, ops::{Div}, time::{Duration, SystemTime}};
+use std::{sync::mpsc::{self}, thread, collections::HashSet, ops::{Div}, time::{Duration, SystemTime}};
 use image::*;
 use blit::*;
 use minifb::{WindowOptions, Scale, Window, Key};
@@ -72,6 +72,7 @@ fn move_knot(head: (i32, i32), tail: (i32, i32)) -> (i32, i32) {
 }
 
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 enum GameSpeed {
     STEP, // not implemented -- only move head when triggered by user, or in ByKnot mode, only move a single knot
     CRAWL,

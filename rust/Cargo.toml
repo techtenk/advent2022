@@ -15,6 +15,7 @@ image = { version = "0.24.6", optional = true }
 minifb = { version = "0.24.0", optional = true }
 imageproc = "0.23.0"
 rusttype = "0.9.2"
+num = "0.4"
 
 [dev-dependencies]
 image = "0.24.6"

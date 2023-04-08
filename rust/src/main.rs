@@ -8,6 +8,7 @@ mod day8;
 mod day9;
 mod day10;
 mod helpers;
+mod tests;
 
 fn help() {
     println!("usage:
