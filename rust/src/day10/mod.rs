@@ -1,4 +1,6 @@
-use std::{collections::HashMap, ops::{Sub, Add}};
+use std::{collections::HashMap, ops::{Sub, Add}, time::Duration, thread};
+
+use minifb::{WindowOptions, Scale, Window, Key};
 
 use crate::{get_file_path, helpers};
 
@@ -63,6 +65,31 @@ pub fn run_part1() {
     println!("Total: {}", total);
 }
 
-pub fn run_part2() {
+fn setup_window(width: usize, height: usize) -> Window {
     
+    let options = WindowOptions {
+        scale: Scale::X1,
+        ..WindowOptions::default()
+    };
+    let window = Window::new(
+        "AoC 2022 CRT Display - ESC to exit",
+        width,
+        height,
+        options,
+    )
+    .expect("Unable to open window");
+
+    window
+}
+
+pub fn run_part2() {
+    // how fun! a drawing one right after I set up a drawing system in the last one
+
+    // "pixel are 20x20 
+    let mut window = setup_window(800, 240);
+
+    
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        thread::sleep(Duration::from_millis(100));
+    }
 }
