@@ -7,6 +7,7 @@ use crate::day7;
 use crate::day8;
 use crate::day9;
 use crate::day10;
+use crate::day11;
 
 pub fn run(day: i32, parts: u8) {
     let run_part1 = parts & 1 > 0;
@@ -52,7 +53,7 @@ pub fn run(day: i32, parts: u8) {
             if run_part2 {
                 day9::run_part2();
             }
-        }
+        },
         10 => {
             if run_part1 {
                 day10::run_part1();
@@ -60,7 +61,15 @@ pub fn run(day: i32, parts: u8) {
             if run_part2 {
                 day10::run_part2();
             }
-        }
+        },
+        11 => {
+            if run_part1 {
+                day11::run_part1();
+            }
+            if run_part2 {
+                day11::run_part2();
+            }
+        },
         _ => {
             println!("Day {} not implemented", day);
         }

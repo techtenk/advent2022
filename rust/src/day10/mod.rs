@@ -88,7 +88,7 @@ pub fn run_part2() {
     // "pixel are 20x20 
     let mut window = setup_window(800, 240);
 
-    
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
         thread::sleep(Duration::from_millis(100));
     }
