@@ -1,6 +1,9 @@
-use std::{collections::HashMap, ops::{Sub, Add}, time::Duration, thread};
+use std::{collections::HashMap, ops::{Sub}, time::{Duration, SystemTime}, thread};
 
+use blit::{BlitBuffer, BlitExt};
+use image::{ImageBuffer, Pixel, Rgb, RgbImage};
 use minifb::{WindowOptions, Scale, Window, Key};
+use rusttype::{Font, Scale as RustTypeScale};
 
 use crate::{get_file_path, helpers};
 
@@ -88,8 +91,32 @@ pub fn run_part2() {
     // "pixel are 20x20 
     let mut window = setup_window(800, 240);
 
+    let mask = 0x00_FF_FF_FF;
+
+    // black square, 20x20
+    let black_square: &[u32; 400] = &[0x00_00_00_00; 400];
+
+    // blit buffer for drawing the "pixels"
+    let black_blitter: BlitBuffer = BlitBuffer::from_buffer(black_square, 20, mask);
+
+    // position of the sprite will be represented with three gray '#'
+    let font = Vec::from(include_bytes!("../resources/whiterabbit/whitrabt.ttf") as &[u8]);
+    let font = Font::try_from_vec(font).unwrap();
+    let text_scale = RustTypeScale {
+        x: 20.0 * 2.0,
+        y: 20.0,
+    };
+
+    let printhead_imgbuf = imageproc::drawing::draw_text(&RgbImage::new(60, 20), Rgb::from([0, 0, 0]), 0, 0, text_scale, &font, "###");
+    let printhead_blitter: BlitBuffer = printhead_imgbuf.to_blit_buffer(mask);
     
-    while window.is_open() && !window.is_key_down(Key::Escape) {
+    while window.is_open() && !window.is_key_down(Key::Escape) {3
+        let start_time = SystemTime::now();
+
+
+        let max_loop_time = 25; // 40 fps
+        let end_time = SystemTime::now();
+        let sleep_time = 
         thread::sleep(Duration::from_millis(100));
     }
 }
