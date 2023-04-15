@@ -110,13 +110,14 @@ pub fn run_part2() {
     let printhead_imgbuf = imageproc::drawing::draw_text(&RgbImage::new(60, 20), Rgb::from([0, 0, 0]), 0, 0, text_scale, &font, "###");
     let printhead_blitter: BlitBuffer = printhead_imgbuf.to_blit_buffer(mask);
     
-    while window.is_open() && !window.is_key_down(Key::Escape) {3
+    while window.is_open() && !window.is_key_down(Key::Escape) {
         let start_time = SystemTime::now();
 
 
         let max_loop_time = 25; // 40 fps
         let end_time = SystemTime::now();
-        let sleep_time = 
+
         thread::sleep(Duration::from_millis(100));
     }
+
 }
