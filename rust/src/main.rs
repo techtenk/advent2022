@@ -10,6 +10,7 @@ mod day10;
 mod helpers;
 mod tests;
 mod day11;
+mod day12;
 
 fn help() {
     println!("usage:

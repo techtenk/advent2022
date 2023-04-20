@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::{Sub, Add}, time::Duration, thread};
+use std::{collections::HashMap, ops::{Sub}, time::{Duration, SystemTime}, thread};
 
 use minifb::{WindowOptions, Scale, Window, Key};
 
@@ -25,7 +25,7 @@ pub fn run_part1() {
     let mut buf = Vec::new();
     let lines = helpers::get_input_lines(&get_file_path!("input.txt"), & mut buf).collect::<Vec<Result<_, _>>>();
 
-    let mut iss: Vec<i32> = Vec::new();
+    // let mut iss: Vec<i32> = Vec::new();
     let mut cycle = 1;
     let mut register = 1;
 
@@ -86,10 +86,22 @@ pub fn run_part2() {
     // how fun! a drawing one right after I set up a drawing system in the last one
 
     // "pixel are 20x20 
-    let mut window = setup_window(800, 240);
+    let window = setup_window(800, 240);
 
+    // set up Image for the canvas
+
+    // set up blit buffer for printing header cursor "XXX"
+    // set up blit buffer for printed spaces - a black square
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        thread::sleep(Duration::from_millis(100));
+        let start_time = SystemTime::now();
+
+        // receive update events, if any
+        // if try_recv
+        // clear old sprites, draw new sprites
+
+        let max_loop_time = 25; // max 40 fps
+        let sleep_time = SystemTime::now().duration_since(start_time).unwrap();
+        thread::sleep(Duration::from_millis(max_loop_time).checked_sub(sleep_time).unwrap_or(Duration::ZERO));
     }
 }
