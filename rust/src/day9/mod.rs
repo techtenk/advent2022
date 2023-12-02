@@ -263,7 +263,7 @@ impl RopeGame {
         let mut buffer: Vec<u32> = vec![0x00_FF_FF_FF; width * height];
         let white_square_buffer = BlitBuffer::from_buffer(&[0x00_FF_FF_FF; 120*120], 120, 0x00_00_00_00);
 
-        let img = image::open(get_file_path!("/resources/head.png")).unwrap();
+        let img = image::open(get_file_path!("../resources/head.png")).unwrap();
         let img = img.resize(12, 12, imageops::FilterType::Nearest);
         println!("Loaded RGB image with size {:?}", img.dimensions());
         let img_size = img.dimensions();
@@ -320,7 +320,7 @@ impl RopeGame {
                 // draw the visited count in upper left corner
                 let mut vis_count = RgbImage::new(300, 60);
 
-                let font = Vec::from(include_bytes!("resources/whiterabbit/whitrabt.ttf") as &[u8]);
+                let font = Vec::from(include_bytes!("../resources/whiterabbit/whitrabt.ttf") as &[u8]);
                 let font = Font::try_from_vec(font).unwrap();
 
                 let height = 48.0;

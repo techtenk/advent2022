@@ -1,7 +1,7 @@
 use std::{collections::HashMap, ops::{Sub}, time::{Duration, SystemTime}, thread};
 
 use blit::{BlitBuffer, BlitExt};
-use image::{ImageBuffer, Pixel, Rgb, RgbImage};
+use image::{Rgb, RgbImage};
 use minifb::{WindowOptions, Scale, Window, Key};
 use rusttype::{Font, Scale as RustTypeScale};
 
