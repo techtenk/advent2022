@@ -58,13 +58,41 @@ mod tests {
 
     /*
      * Test if we try to add a square with a large x, if it
-     * can choose the appropriate row width
+     * can choose an appropriate row width
      */
+    #[test]
+    fn test_add_large_x() {
+        unsafe {
+            let graph = create_graph();
+            let _result = add_square(graph, square_t { x: 11, y: 0});
+            // if the array didn't reallocate at all then the we would find it at (1, 2) which is offset 11
+            let result_should_be_empty = get_square(graph, 1, 2);
+            assert!(result_should_be_empty.status == FindResultStatus::FindResultEmpty);
+
+            // if it reallocated "normally", it would expand the row width to 10 and then (1, 1) would be where it is
+            let another_should_be_empty = get_square(graph, 1, 1);
+            assert!(another_should_be_empty.status == FindResultStatus::FindResultEmpty);
+
+            // good, now see if we can fetch it from the actual location
+            let result_square = get_square(graph, 11, 0);
+            assert!(result_square.status == FindResultStatus::FindResultReturnSquare);
+        }
+    
+    }
 
     /*
-     * Test if we try to add a square with a large y, if it
-     * can choose the appropriate row width
+     * Test if we try to add a square with a very large y, if it
+     * can choose an appropriate row width. The intent is to choose a
+     * y that is large enough that the grid can't be square anymore 
+     * because of the MAX_SQUARES_LEN value
+     * Ex: > 10000 if MAX_SQUARES_LEN is 1,000,000
      */
+    fn test_add_large_y() {
+        unsafe {
+            let graph = create_graph();
+            add_square(graph, square_t { x: 0, y: 12000});
+        }
+    }
 
     /**
      * Test the bounds of reallocation, to max len of 1,000,000
@@ -128,10 +156,12 @@ mod tests {
         unsafe {
             let graph: *const c_void = create_graph();
             
-            // fill the first 2 rows with squares, with an edge for each from row 1 to row 2
+            // fill the first 2 rows with squares, with an edge for each from row 2 to row 1
+            // since we index pathedge based off their start square and the start squares for row 2
+            // will have to move, we have to move the pathedge memory around too
             for i in 0..5 {
-                let start = square_t { x: i, y: 0 };
-                let end = square_t { x: i, y: 1 };
+                let start = square_t { x: i, y: 1 };
+                let end = square_t { x: i, y: 0 };
                 let pathedge = pathedge_t { start_square: start, end_square: end };
                 add_square(graph, start);
                 add_square(graph, end);
@@ -157,18 +187,29 @@ mod tests {
     }
 
     /**
-     * Test adding a new pathedge
-     */
-    fn test_add_pathedge(){}
-
-    /**
      * Test adding a new pathedage that has to allocate another pathedge
      */
-    fn test_add_pathedge_allocate_new_memory(){}
+    #[test]
+    fn test_add_pathedge_allocate_new_memory(){
+        unsafe {
+            let graph: *const c_void = create_graph();
+            // five pathedges from one source node will force it to allocate more memory
+            let source = square_t { x: 1, y: 1 };
+            let mut dest = Vec::new();
+            for i in 0..5 {
+                dest.push(square_t { x: 0, y: i });
+            }
+            for d in &dest {
+                add_pathedge(graph, pathedge_t { start_square: source, end_square: *d });
+            }
+            // now see if we can find the last one
+            let result = get_pathedge(graph, source, *(dest.last().unwrap()));
+            assert_eq!(result.status, FindResultStatus::FindResultReturnPathedge);
+            assert_eq!(result.pathedge.start_square, source);
+            assert_eq!(result.pathedge.end_square, *dest.last().unwrap());
+        }
 
-    /**
-     * Test that destroy graph frees all memory associated with it
-     */
-    fn test_destroy_graph_frees_memory() {}
+    }
+
     
 }
